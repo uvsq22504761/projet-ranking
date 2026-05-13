@@ -1,1 +1,1 @@
-bonjour 
+Le fichier pagerank_original.c correspond au code original de PageRank étudié en TD. Une fois compilé, pour l'exécuter, il faut ajouter en argument le nom du fichier contenant la matrice sur laquelle on veut travailler au format MatrixMarket.
