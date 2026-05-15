@@ -26,7 +26,7 @@ void ajout_arc(Cell **P, double prob, int i, int j) {
 }
 
 // lecture de la matrice en format MatrixMarket, stockage sous forme de tableau de listes chainées
-Cell **lecture_matrice_market(char *filename, int *N_out, double **f_out, Cell ***Q_out) {
+Cell **lecture_matrice_market(char *filename, int *N_out, double **f_out) {
     FILE *file = fopen(filename, "r");
     if (!file) {
         fprintf(stderr, "Erreur lecture fichier\n");
@@ -48,16 +48,13 @@ Cell **lecture_matrice_market(char *filename, int *N_out, double **f_out, Cell *
     *N_out = N;
     fprintf(stderr, "Lecture de %d noeuds, %d arcs...\n", N, M);
 
-    // initialiser P (tableau de listes chaînées) pour les arcs sortants
+    // initialiser P (tableau de listes chaînées)
     Cell **P = calloc(N, sizeof(Cell *));
-    //initialiser Q (aussi tab de listes chainées) pour les arcs entrants
-    Cell **Q = calloc(N, sizeof(Cell *));
-    *Q_out = Q; // Q n'est pas renvoyé par la fonction mais modif en tant que parametre
 
     // compter le degré sortant de chaque noeud
     int *deg = calloc(N, sizeof(int));
     int *froms = malloc(M * sizeof(int));
-    int *tos   = malloc(M * sizeof(int));
+    int *tos = malloc(M * sizeof(int));
 
     for (int k = 0; k < M; k++) {
         if (k % 1000000 == 0) { // affichage de progression
@@ -68,7 +65,7 @@ Cell **lecture_matrice_market(char *filename, int *N_out, double **f_out, Cell *
             fprintf(stderr, "Erreur lecture arc %d\n", k);
             exit(1);
         }
-        froms[k] = i - 1; // passage en 0-indexé
+        froms[k] = i - 1;
         tos[k] = j - 1;
         deg[i - 1]++;
     }
@@ -88,8 +85,7 @@ Cell **lecture_matrice_market(char *filename, int *N_out, double **f_out, Cell *
         int i = froms[k];
         int j = tos[k];
         double prob = 1.0 / deg[i];
-        ajout_arc(P, prob, i, j); // arc sortant i -> j dans P[i]
-        ajout_arc(Q, prob, j, i); // arc entrant i -> j dans Q[j]
+        ajout_arc(P, prob, j, i); // arcs entrants
     }
 
     free(deg);
@@ -108,7 +104,7 @@ double norme(double *x, double *y, int N) {
     return result;
 }
 
-void iterer(Cell **P, Cell **Q, double *f, int N, double eps, int max_iter, double alpha) {
+void iterer(Cell **P, double *f, int N, double eps, int max_iter, double alpha) {
     double *pi;
     double *pi_old;
     pi = (double *) malloc(N * sizeof(double));
@@ -143,7 +139,7 @@ void iterer(Cell **P, Cell **Q, double *f, int N, double eps, int max_iter, doub
         for (int i = 0; i < N; i++) {
             // accumulation arcs entrants
             double s = 0.0;
-            Cell *c = Q[i];
+            Cell *c = P[i];
             while (c) {
                 if (c->index != i) {
                     s += pi[c->index] * c->val;
@@ -154,7 +150,7 @@ void iterer(Cell **P, Cell **Q, double *f, int N, double eps, int max_iter, doub
 
             // valeur G[i,i] = alpha * P[i,i] + val
             double Pii = 0.0;
-            Cell *d = Q[i];
+            Cell *d = P[i];
             while (d) {
                 if (d->index == i) {
                     Pii = d->val;
@@ -216,11 +212,10 @@ int main(int argv, char** args)  {
     }
     int N;
     double *f = NULL;
-    Cell **Q = NULL;
 
-    Cell **P = lecture_matrice_market(args[1], &N, &f, &Q);
+    Cell **P = lecture_matrice_market(args[1], &N, &f);
 
-    iterer(P, Q, f, N, EPSILON, MAX_ITER, ALPHA);
+    iterer(P, f, N, EPSILON, MAX_ITER, ALPHA);
 
     for (int j = 0; j < N; j++) {
         Cell *c = P[j];
@@ -229,15 +224,8 @@ int main(int argv, char** args)  {
             c = c->next;
             free(tmp);
         }
-        c = Q[j];
-        while (c) {
-            Cell *tmp = c;
-            c = c->next;
-            free(tmp);
-        }
     }
     free(P);
-    free(Q);
     free(f);
 
     return 0;
