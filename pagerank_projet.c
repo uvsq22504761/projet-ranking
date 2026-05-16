@@ -104,7 +104,7 @@ double norme(double *x, double *y, int N) {
     return result;
 }
 
-void iterer(Cell **P, double *f, int N, double eps, int max_iter, double alpha) {
+double *iterer(Cell **P, double *f, int N, double eps, int max_iter, double alpha, int *iterations) {
     double *pi;
     double *pi_old;
     pi = (double *) malloc(N * sizeof(double));
@@ -182,6 +182,8 @@ void iterer(Cell **P, double *f, int N, double eps, int max_iter, double alpha) 
         }
     } while (norme(pi, pi_old, N) > eps);
 
+    *iterations = iter;
+
     // top 10 pour vérifier
     /*
     int top[10] = {0};
@@ -201,22 +203,97 @@ void iterer(Cell **P, double *f, int N, double eps, int max_iter, double alpha) 
         fprintf(stderr, "Node %d : %.10f\n", top[k], pi_pair[top[k]]);
     fprintf(stderr, "Somme = %.6f\n", sum);*/
 
-    free(pi);
     free(pi_old);
+    return pi;
+}
+
+// fonction pour enlever l'extension et le chemin d'un ficchier, gardant juste le nom de base
+char *strip_file(char *filename) {
+    char *base = filename;
+    for (char *p = filename; *p; p++) { // dernier / (linux) ou \ (windows)
+        if (*p == '/' || *p == '\\') {
+            base = p + 1;
+        }
+    }
+    char *end = base;
+    char *dot = NULL;
+    for (char *p = base; *p; p++) {
+        if (*p == '.') {
+            dot = p;
+        }
+        end = p;
+    }
+    size_t len = dot ? (size_t) (dot - base) : (size_t) (end - base + 1);
+    char *result = malloc(len + 1);
+    if (!result) {
+        fprintf(stderr, "Malloc de nom de fichier stipped raté\n");
+        exit(1);
+    }
+    for (size_t i = 0; i < len; i++) {
+        result[i] = base[i];
+    }
+    result[len] = '\0';
+    return result;
+}
+
+// sauvegarder dans un fichier txt pour le script python
+void sauvegarder_txt(char *fichier_matrice, double *pi, int N, double alpha, double epsilon, int iterations) {
+    char *fichier_matrice_stripped = strip_file(fichier_matrice);
+    char filename[256];
+    snprintf(filename, sizeof(filename), "results_%s_alpha_%.2f.txt", fichier_matrice_stripped, alpha);
+
+    FILE *file = fopen(filename, "w");
+    if (!file) {
+        fprintf(stderr, "Fichier de résultat ne s'ouvre pas\n");
+        return;
+    }
+
+    fprintf(file, "# Resultats de Pagerank Gauss-Seidel\n");
+    fprintf(file, "# source : %s\n", fichier_matrice);
+    fprintf(file, "# alpha : %.6f\n", alpha);
+    fprintf(file, "# epsilon : %.2e\n", epsilon);
+    fprintf(file, "# iterations : %d\n", iterations);
+    fprintf(file, "# nombre de noeuds : %d\n", N);
+    for (int i = 0; i < N; i++) {
+        fprintf(file, "%d %.10f\n", i, pi[i]);
+    }
+
+    fclose(file);
+    fprintf(stdout, "Les résultats sont sauvegardés dans le fichier %s\n", filename);
 }
 
 int main(int argv, char** args)  {
-    if (argv == 1 || argv > 2) {
-        fprintf(stderr, "Trop ou pas assez d'arguments : écrire suivi du nom du fichier\n");
+    // vérif nombre arguments
+    if (argv < 2 || argv > 3) {
+        fprintf(stderr, "Trop ou pas assez d'arguments : écrire suivi du nom du fichier et de la valeur d'alpha\n");
         exit(1);
     }
+
+    // définir la valeur de alpha depuis l'input
+    double alpha = ALPHA;
+    if (argv == 3) {
+        alpha = atof(args[2]);
+        if (alpha <= 0.0 || alpha >= 1.0) {
+            fprintf(stderr, "Pas la bonne valeur de alpha\n");
+            exit(1);
+        }
+    }
+    fprintf(stdout, "Alpha = %.6f\n", alpha);
+
     int N;
     double *f = NULL;
 
+    // lecture du fichier contenant la matrice et construction de P
     Cell **P = lecture_matrice_market(args[1], &N, &f);
 
-    iterer(P, f, N, EPSILON, MAX_ITER, ALPHA);
+    // algorithme principal
+    int iterations = 0;
+    double *pi = iterer(P, f, N, EPSILON, MAX_ITER, alpha, &iterations);
 
+    // résultats sauvegardés pour l'analyse
+    sauvegarder_txt(args[1], pi, N, alpha, EPSILON, iterations);
+
+    // libération mémoire
     for (int j = 0; j < N; j++) {
         Cell *c = P[j];
         while (c) {
@@ -227,6 +304,7 @@ int main(int argv, char** args)  {
     }
     free(P);
     free(f);
+    free(pi);
 
     return 0;
 }
