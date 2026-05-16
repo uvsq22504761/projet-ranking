@@ -1,6 +1,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <math.h>
+#include <time.h>
 
 #define EPSILON 1e-6
 #define MAX_ITER 2000
@@ -119,6 +120,9 @@ double *iterer(Cell **P, double *f, int N, double eps, int max_iter,
     }
     int iter = 0;
     double norm_val;
+    // on va faire une horloge 
+    clock_t t_start = clock();
+    double max_time = 240.0; // 4 minutos max -> +2 mins du temps de wikipedia
 
     do {
         // copie de l'état
@@ -165,8 +169,9 @@ double *iterer(Cell **P, double *f, int N, double eps, int max_iter,
         fprintf(stderr, "Iteration %d, norme = %.2e\n", iter, norm_val);
 
         iter++;
-        if (iter >= max_iter) {
-            fprintf(stderr, "(max itérations atteintes)\n");
+        double time = (double)(clock() - t_start)/ CLOCKS_PER_SEC; // pour convertir en sec
+        if (iter >= max_iter || time>=max_time ) {
+            fprintf(stderr, "(max itérations ou temps atteints )\n");
             break;
         }
 
