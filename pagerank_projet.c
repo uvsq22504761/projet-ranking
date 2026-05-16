@@ -215,7 +215,7 @@ char *strip_file(char *filename) {
 void sauvegarder_txt(char *fichier_matrice, double *pi, int N, double alpha, double epsilon, int iterations) {
     char *fichier_matrice_stripped = strip_file(fichier_matrice);
     char filename[256];
-    snprintf(filename, sizeof(filename), "results_%s_alpha_%.2f.txt", fichier_matrice_stripped, alpha);
+    snprintf(filename, sizeof(filename), "results_%s_alpha_%.2f_eps_%.0e.txt", fichier_matrice_stripped, alpha, epsilon);
 
     FILE *file = fopen(filename, "w");
     if (!file) {
@@ -239,21 +239,29 @@ void sauvegarder_txt(char *fichier_matrice, double *pi, int N, double alpha, dou
 
 int main(int argv, char** args)  {
     // vérif nombre arguments
-    if (argv < 2 || argv > 3) {
-        fprintf(stderr, "Trop ou pas assez d'arguments : écrire suivi du nom du fichier et de la valeur d'alpha\n");
+    if (argv < 2 || argv > 4) {
+        fprintf(stderr, "Trop ou pas assez d'arguments : écrire suivi du nom du fichier et potentiellement de la valeur d'alpha et d'epsilon\n");
         exit(1);
     }
 
     // définir la valeur de alpha depuis l'input
     double alpha = ALPHA;
-    if (argv == 3) {
+    if (argv >= 3) {
         alpha = atof(args[2]);
         if (alpha <= 0.0 || alpha >= 1.0) {
             fprintf(stderr, "Pas la bonne valeur de alpha\n");
             exit(1);
         }
     }
-    fprintf(stdout, "Alpha = %.6f\n", alpha);
+    double epsilon = EPSILON;
+    if (argv == 4) {
+        epsilon = atof(args[3]);
+        if (epsilon <= 0.0) {
+            fprintf(stderr, "Pas la bonne valeur de epsilon\n");
+            exit(1);
+        }
+    }
+    fprintf(stdout, "Alpha = %.6f ; epsilon = %.2e\n", alpha, epsilon);
 
     int N;
     double *f = NULL;
@@ -263,10 +271,10 @@ int main(int argv, char** args)  {
 
     // algorithme principal
     int iterations = 0;
-    double *pi = iterer(P, f, N, EPSILON, MAX_ITER, alpha, &iterations);
+    double *pi = iterer(P, f, N, epsilon, MAX_ITER, alpha, &iterations);
 
     // résultats sauvegardés pour l'analyse
-    sauvegarder_txt(args[1], pi, N, alpha, EPSILON, iterations);
+    sauvegarder_txt(args[1], pi, N, alpha, epsilon, iterations);
 
     // libération mémoire
     for (int j = 0; j < N; j++) {
