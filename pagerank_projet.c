@@ -104,105 +104,75 @@ double norme(double *x, double *y, int N) {
     return result;
 }
 
-double *iterer(Cell **P, double *f, int N, double eps, int max_iter, double alpha, int *iterations) {
-    double *pi;
-    double *pi_old;
-    pi = (double *) malloc(N * sizeof(double));
-    pi_old = (double *) malloc(N * sizeof(double));
+double *iterer(Cell **P, double *f, int N, double eps, int max_iter,
+               double alpha, int *iterations) {
+
+    double *pi     = (double *) malloc(N * sizeof(double));
+    double *pi_old = (double *) malloc(N * sizeof(double));
     if (!pi || !pi_old) {
         fprintf(stderr, "Allocation de pi ratée\n");
         exit(1);
     }
 
-    // init pi
-    for (int i = 0; i < N; i++) {
+    for (int i = 0; i < N; i++){
         pi[i] = 1.0 / N;
     }
-
     int iter = 0;
+    double norm_val;
 
     do {
         // copie de l'état
-        for (int i = 0; i < N; i++) {
+        for (int i = 0; i < N; i++)
             pi_old[i] = pi[i];
-        }
-
-        // précalcul de xf = pi * f
+        // ceci reste de la même façon
         double xf = 0.0;
-        for (int i = 0; i < N; i++) {
-            xf += pi[i] * f[i];
+        for (int i = 0; i < N; i++){
+                xf += pi[i] * f[i];
         }
-
         double val = (alpha * xf + (1.0 - alpha)) / N;
-
-        // parcours ascendant
+        // parcours ascendant 
         for (int i = 0; i < N; i++) {
-            // accumulation arcs entrants
-            double s = 0.0;
+            // Changement
+            // Un seul parcours de P[i] : s et Pii recuperees ensemble
+            double s   = 0.0;
+            double Pii = 0.0;
             Cell *c = P[i];
             while (c) {
-                if (c->index != i) {
+                if (c->index == i) {
+                    // arc de i vers lui-même 
+                    Pii = c->val;
+                } else {
+                    // ça veut dire index diff 
                     s += pi[c->index] * c->val;
                 }
                 c = c->next;
             }
             s *= alpha;
 
-            // valeur G[i,i] = alpha * P[i,i] + val
-            double Pii = 0.0;
-            Cell *d = P[i];
-            while (d) {
-                if (d->index == i) {
-                    Pii = d->val;
-                    break;
-                }
-                d = d->next;
-            }
-            double Gii = alpha * Pii + val;
-
-            // calcul final du nouveau pi
+            double Gii    = alpha * Pii + val;
             pi[i] = (s + val) / (1.0 - Gii);
         }
 
-        // renormalisation du vecteur pi
+        // renormalisation — nécessaire car Gauss-Seidel ne préserve pas ||pi||=1
         double sum = 0.0;
-        for (int i = 0; i < N; i++) {
-            sum += pi[i];
-        }
-        for (int i = 0; i < N; i++) {
-            pi[i] /= sum;
-        }
+        for (int i = 0; i < N; i++) sum += pi[i];
+        for (int i = 0; i < N; i++) pi[i] /= sum;
 
-        fprintf(stderr, "Iteration %d, norme = %.2e\n", iter, norme(pi, pi_old, N));
+        // Changement
+        // norme calculée une seule fois et pour agiliser stocker swur norme val 
+        // 
+        norm_val = norme(pi, pi_old, N);
+        fprintf(stderr, "Iteration %d, norme = %.2e\n", iter, norm_val);
 
         iter++;
         if (iter >= max_iter) {
-            printf("(max itérations atteintes)\n");
+            fprintf(stderr, "(max itérations atteintes)\n");
             break;
         }
-    } while (norme(pi, pi_old, N) > eps);
+
+    } while (norm_val > eps);   // réutilise norm_val déjà calculé
 
     *iterations = iter;
-
-    // top 10 pour vérifier
-    /*
-    int top[10] = {0};
-    for (int i = 1; i < N; i++) {
-        for (int k = 0; k < 10; k++) {
-            if (pi_pair[i] > pi_pair[top[k]]) {
-                for (int l = 9; l > k; l--) top[l] = top[l-1];
-                top[k] = i;
-                break;
-            }
-        }
-    }
-    fprintf(stderr, "Top 10 noeuds :\n");
-    double sum = 0;
-    for (int i = 0; i < N; i++) sum += pi_pair[i];
-    for (int k = 0; k < 10; k++)
-        fprintf(stderr, "Node %d : %.10f\n", top[k], pi_pair[top[k]]);
-    fprintf(stderr, "Somme = %.6f\n", sum);*/
-
     free(pi_old);
     return pi;
 }
