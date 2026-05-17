@@ -55,8 +55,7 @@ Cell **lecture_matrice_market(char *filename, int *N_out, double **f_out) {
     // compter le degré sortant de chaque noeud
     int *deg = calloc(N, sizeof(int));
     int *froms = malloc(M * sizeof(int));
-    int *tos   = malloc(M * sizeof(int));
-
+    int *tos = malloc(M * sizeof(int));
     for (int k = 0; k < M; k++) {
         if (k % 1000000 == 0) {
             fprintf(stderr, "\rArcs lus : %d / %d", k, M);
@@ -66,22 +65,26 @@ Cell **lecture_matrice_market(char *filename, int *N_out, double **f_out) {
             fprintf(stderr, "Erreur lecture arc %d\n", k);
             exit(1);
         }
-        froms[k] = i - 1; // passage en 0-indexé
+        froms[k] = i - 1;
         tos[k] = j - 1;
         deg[i - 1]++;
     }
 
     fprintf(stderr, "\rArcs lus : %d / %d\n", M, M);
 
-    // construire f : f[i] = 1 si noeud sans arc sortant (dangling), 0 sinon
+    // construire f : f[i] = 1 si noeud sans arc sortant, 0 sinon
     *f_out = malloc(N * sizeof(double));
     double *f = *f_out;
     for (int i = 0; i < N; i++) {
-        f[i] = (deg[i] == 0) ? 1.0 : 0.0;
+        if (deg[i] == 0) {
+            f[i] = 1.0;
+        } else {
+            f[i] = 0.0;
+        }
     }
 
     // construire les listes chaînées avec probabilités uniformes
-    fprintf(stderr, "Construction des listes chainees...\n");
+    fprintf(stderr, "Construction des listes chainees\n");
     for (int k = 0; k < M; k++) {
         int i = froms[k];
         int j = tos[k];
@@ -180,7 +183,7 @@ double *iterer(Cell **P, double *f, int N, double eps, int max_iter, double alph
         }
     } while (norme(pi_pair, pi_impair, N) > eps);
 
-    // top 10 pour vérifier
+    // top 10 des noeuds pour vérifier
     int top[10] = {0};
     for (int i = 1; i < N; i++) {
         for (int k = 0; k < 10; k++) {
@@ -218,7 +221,12 @@ char *strip_file(char *filename) {
         }
         end = p;
     }
-    size_t len = dot ? (size_t) (dot - base) : (size_t) (end - base + 1);
+    size_t len;
+    if (dot) {
+        len = (size_t) (dot - base);
+    } else {
+        len = (size_t) (end - base + 1);
+    }
     char *result = malloc(len + 1);
     if (!result) {
         fprintf(stderr, "Malloc de nom de fichier stipped raté\n");

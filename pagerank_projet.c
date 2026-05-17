@@ -77,7 +77,11 @@ Cell **lecture_matrice_market(char *filename, int *N_out, double **f_out) {
     *f_out = malloc(N * sizeof(double));
     double *f = *f_out;
     for (int i = 0; i < N; i++) {
-        f[i] = (deg[i] == 0) ? 1.0 : 0.0;
+        if (deg[i] == 0) {
+            f[i] = 1.0;
+        } else {
+            f[i] = 0.0;
+        }
     }
 
     // construire les listes chaînées avec probabilités uniformes
@@ -199,7 +203,13 @@ char *strip_file(char *filename) {
         }
         end = p;
     }
-    size_t len = dot ? (size_t) (dot - base) : (size_t) (end - base + 1);
+    size_t len;
+    if (dot) {
+        len = (size_t) (dot - base);
+    } else {
+        len = (size_t) (end - base + 1);
+    }
+    
     char *result = malloc(len + 1);
     if (!result) {
         fprintf(stderr, "Malloc de nom de fichier stipped raté\n");
