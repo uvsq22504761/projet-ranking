@@ -8,3 +8,6 @@ Pour exécuter le projet, taper le nom de l'exécutable suivi du nom du fichier 
 Nous avons le fichier `script.py` qui permet d'exécuter plusieurs fois pagerank (version Gauss-Seidel) sur une même matrice avec des valeurs d'alpha différentes. Il est implémenté de sorte à exécuter ceci pour plusieurs valeurs de epsilon fixées. On obtient donc autant de graphiques que de valeurs de epsilon sur lesquelles on veut travailler. Pour le lancer, taper `python3 script.py` dans le terminal. Les graphiques construits seront sauvegardés dans le répertoire temporaire `build/`.
 
 Notre fichier `script_2.py` est similaire, sauf qu'il permet d'exécuter pagerank version initiale.
+
+
+Pour changer la matrice avec laquelle on travaille : depuis le script python il faut changer dans le code le chemin du fichier, depuis l'exécutable du C c'est dans les arguments passés à la suite de l'exécutable.
