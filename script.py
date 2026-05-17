@@ -30,7 +30,7 @@ for epsilon in epsilons:
     plt.xlabel("alpha")
     plt.ylabel("nombre d'itérations")
     plt.ylim(0, 180)
-    plt.title(f"Pagerank Gauss-Seidel. epsilon = {epsilon:.0e}, temps total = {temps_tot:.4f}s")
+    plt.title(f"Pagerank Gauss-Seidel . epsilon = {epsilon:.0e}, temps total = {temps_tot:.4f}s")
     plt.grid(True)
     plt.savefig(repo_build / f"graphique_eps_{epsilon:.0e}.png") # aussi stocké dans build/
     plt.close()

@@ -1,6 +1,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <math.h>
+#include <time.h>
 
 #define EPSILON 1e-6
 #define MAX_ITER 2000
@@ -144,7 +145,7 @@ double norme(double *pi_pair, double *pi_impair, int N) {
     return result;
 }
 
-void iterer(Cell **P, double *f, int N, double eps, int max_iter, double alpha) {
+double *iterer(Cell **P, double *f, int N, double eps, int max_iter, double alpha, int *iterations, double *temps_sortie) {
     double *pi_pair;
     double *pi_impair;
     pi_pair = (double *) malloc(N * sizeof(double));
@@ -160,6 +161,8 @@ void iterer(Cell **P, double *f, int N, double eps, int max_iter, double alpha) 
     }
 
     int iter = 0;
+    clock_t t_start = clock();
+    double max_time = 240.0;
 
     do {
         multiplier(pi_impair, pi_pair, P, f, N, alpha);
@@ -168,7 +171,10 @@ void iterer(Cell **P, double *f, int N, double eps, int max_iter, double alpha) 
         fprintf(stderr, "Iteration %d, norme = %.2e\n", iter, norme(pi_pair, pi_impair, N));
 
         iter++;
-        if (iter >= max_iter) {
+        double time_out = (double)(clock() - t_start) / CLOCKS_PER_SEC;
+        *temps_sortie = time_out;
+        *iterations = iter;
+        if (iter >= max_iter ) {
             printf("(max itérations atteintes)\n");
             break;
         }
@@ -192,21 +198,101 @@ void iterer(Cell **P, double *f, int N, double eps, int max_iter, double alpha) 
         fprintf(stderr, "Node %d : %.10f\n", top[k], pi_pair[top[k]]);
     fprintf(stderr, "Somme = %.6f\n", sum);
 
-    free(pi_pair);
     free(pi_impair);
+    return pi_pair;
 }
 
-int main(int argv, char** args)  {
-    if (argv == 1 || argv > 2) {
-        fprintf(stderr, "Trop ou pas assez d'arguments : écrire suivi du nom du fichier\n");
+// fonction pour enlever l'extension et le chemin d'un ficchier, gardant juste le nom de base
+char *strip_file(char *filename) {
+    char *base = filename;
+    for (char *p = filename; *p; p++) { // dernier / (linux) ou \ (windows)
+        if (*p == '/' || *p == '\\') {
+            base = p + 1;
+        }
+    }
+    char *end = base;
+    char *dot = NULL;
+    for (char *p = base; *p; p++) {
+        if (*p == '.') {
+            dot = p;
+        }
+        end = p;
+    }
+    size_t len = dot ? (size_t) (dot - base) : (size_t) (end - base + 1);
+    char *result = malloc(len + 1);
+    if (!result) {
+        fprintf(stderr, "Malloc de nom de fichier stipped raté\n");
         exit(1);
     }
+    for (size_t i = 0; i < len; i++) {
+        result[i] = base[i];
+    }
+    result[len] = '\0';
+    return result;
+}
+
+// sauvegarder dans un fichier txt pour le script python
+void sauvegarder_txt(char *fichier_matrice, double *pi, int N, double alpha, double epsilon, int iterations, double temps ) {
+    char *fichier_matrice_stripped = strip_file(fichier_matrice);
+    char filename[256];
+    snprintf(filename, sizeof(filename), "results_original_%s_alpha_%.2f_eps_%.0e.txt", fichier_matrice_stripped, alpha, epsilon);
+
+    FILE *file = fopen(filename, "w");
+    if (!file) {
+        fprintf(stderr, "Fichier de résultat ne s'ouvre pas\n");
+        return;
+    }
+
+    fprintf(file, "# Resultats de Pagerank orignal\n");
+    fprintf(file, "# source : %s\n", fichier_matrice);
+    fprintf(file, "# alpha : %.6f\n", alpha);
+    fprintf(file, "# epsilon : %.2e\n", epsilon);
+    fprintf(file, "# iterations : %d\n", iterations);
+    fprintf(file ,"# temps : %.4f\n", temps);
+    fprintf(file, "# nombre de noeuds : %d\n", N);
+    for (int i = 0; i < N; i++) {
+        fprintf(file, "%d %.10f\n", i, pi[i]);
+    }
+
+    fclose(file);
+    fprintf(stdout, "Les résultats sont sauvegardés dans le fichier %s\n", filename);
+}
+int main(int argv, char** args)  {
+    if (argv < 2 || argv > 4) {
+        fprintf(stderr, "Trop ou pas assez d'arguments\n");
+        exit(1);
+    }
+
+    double alpha = ALPHA;
+    if (argv >= 3) {
+        alpha = atof(args[2]);
+        if (alpha <= 0.0 || alpha >= 1.0) {
+            fprintf(stderr, "Pas la bonne valeur de alpha\n");
+            exit(1);
+        }
+    }
+    double epsilon = EPSILON;
+    if (argv == 4) {
+        epsilon = atof(args[3]);
+        if (epsilon <= 0.0) {
+            fprintf(stderr, "Pas la bonne valeur de epsilon\n");
+            exit(1);
+        }
+    }
+    fprintf(stdout, "Alpha = %.6f ; epsilon = %.2e\n", alpha, epsilon);
+
     int N;
     double *f = NULL;
-
     Cell **P = lecture_matrice_market(args[1], &N, &f);
 
-    iterer(P, f, N, EPSILON, MAX_ITER, ALPHA);
+    int iterations = 0;
+    double temps = 0.0;
+    double *pi = iterer(P, f, N, epsilon, MAX_ITER, alpha, &iterations, &temps);
+
+    fprintf(stdout, "Iterations : %d\n", iterations);
+    fprintf(stdout, "Temps total : %.4f secondes\n", temps);
+
+    sauvegarder_txt(args[1], pi, N, alpha, epsilon, iterations, temps);
 
     for (int j = 0; j < N; j++) {
         Cell *c = P[j];
@@ -217,6 +303,7 @@ int main(int argv, char** args)  {
         }
     }
     free(P);
-
+    free(f);
+    free(pi);
     return 0;
 }

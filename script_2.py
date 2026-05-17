@@ -13,21 +13,23 @@ for epsilon in epsilons:
     iterations = []
     for alpha in alphas:
         # on exécute pagerank avec les paramètres fichier et alpha, et les résultats sont stockés dans build/
-        subprocess.run([str((repo_build / "pagerank").resolve()), str(fichier_matrice.resolve()), str(alpha), str(epsilon)], cwd=repo_build)
-        fichier_resultat = repo_build / f"results_{fichier_matrice.stem}_alpha_{alpha:.2f}_eps_{epsilon:.0e}.txt"
+        subprocess.run([str((repo_build / "pagerank_o").resolve()), str(fichier_matrice.resolve()), str(alpha), str(epsilon)], cwd=repo_build)
+        fichier_resultat = repo_build / f"results_original_{fichier_matrice.stem}_alpha_{alpha:.2f}_eps_{epsilon:.0e}.txt"
+        temps_tot = None;
         with open(fichier_resultat) as f:
             for line in f:
                 # on récupère le nombre d'itérations qui ira en ordonnée du graphique
                 if line.startswith("# iterations"):
                     iterations.append(int(line.split(":")[1].strip()))
-                    break
+                if line.startswith("# temps"):
+                    temps_tot = float(line.split(":")[1].strip())
 
     # construction des graphiques, sauvegarde et affichage
     plt.plot(alphas, iterations)
     plt.xlabel("alpha")
     plt.ylabel("nombre d'itérations")
     plt.ylim(0, 180)
-    plt.title(f"Pagerank Gauss-Seidel. epsilon = {epsilon:.0e}")
+    plt.title(f"Pagerank Original . epsilon = {epsilon:.0e}, temps total = {temps_tot:.4f}s")
     plt.grid(True)
-    plt.savefig(repo_build / f"graphique_eps_{epsilon:.0e}.png") # aussi stocké dans build/
+    plt.savefig(repo_build / f"graphique_original_eps_{epsilon:.0e}.png") # aussi stocké dans build/
     plt.close()
