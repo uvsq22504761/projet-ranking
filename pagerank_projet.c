@@ -106,7 +106,7 @@ double norme(double *x, double *y, int N) {
 }
 
 double *iterer(Cell **P, double *f, int N, double eps, int max_iter,
-               double alpha, int *iterations) {
+               double alpha, int *iterations, double *temps_sortie) {
 
     double *pi     = (double *) malloc(N * sizeof(double));
     double *pi_old = (double *) malloc(N * sizeof(double));
@@ -169,8 +169,9 @@ double *iterer(Cell **P, double *f, int N, double eps, int max_iter,
         fprintf(stderr, "Iteration %d, norme = %.2e\n", iter, norm_val);
 
         iter++;
-        double time = (double)(clock() - t_start)/ CLOCKS_PER_SEC; // pour convertir en sec
-        if (iter >= max_iter || time>=max_time ) {
+        double time_tot = (double)(clock() - t_start)/ CLOCKS_PER_SEC; // pour convertir en sec
+        *temps_sortie = time_tot;
+        if (iter >= max_iter || time_tot>=max_time ) {
             fprintf(stderr, "(max itérations ou temps atteints )\n");
             break;
         }
@@ -212,7 +213,7 @@ char *strip_file(char *filename) {
 }
 
 // sauvegarder dans un fichier txt pour le script python
-void sauvegarder_txt(char *fichier_matrice, double *pi, int N, double alpha, double epsilon, int iterations) {
+void sauvegarder_txt(char *fichier_matrice, double *pi, int N, double alpha, double epsilon, int iterations, double temps ) {
     char *fichier_matrice_stripped = strip_file(fichier_matrice);
     char filename[256];
     snprintf(filename, sizeof(filename), "results_%s_alpha_%.2f_eps_%.0e.txt", fichier_matrice_stripped, alpha, epsilon);
@@ -228,6 +229,7 @@ void sauvegarder_txt(char *fichier_matrice, double *pi, int N, double alpha, dou
     fprintf(file, "# alpha : %.6f\n", alpha);
     fprintf(file, "# epsilon : %.2e\n", epsilon);
     fprintf(file, "# iterations : %d\n", iterations);
+    fprintf(file ,"# temps : %.4f\n", temps);
     fprintf(file, "# nombre de noeuds : %d\n", N);
     for (int i = 0; i < N; i++) {
         fprintf(file, "%d %.10f\n", i, pi[i]);
@@ -271,10 +273,11 @@ int main(int argv, char** args)  {
 
     // algorithme principal
     int iterations = 0;
-    double *pi = iterer(P, f, N, epsilon, MAX_ITER, alpha, &iterations);
+    double temps = 0.0;
+    double *pi = iterer(P, f, N, epsilon, MAX_ITER, alpha, &iterations, &temps);
 
     // résultats sauvegardés pour l'analyse
-    sauvegarder_txt(args[1], pi, N, alpha, epsilon, iterations);
+    sauvegarder_txt(args[1], pi, N, alpha, epsilon, iterations,temps);
 
     // libération mémoire
     for (int j = 0; j < N; j++) {
